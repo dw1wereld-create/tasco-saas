@@ -1,0 +1,322 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum Plan {
+  FREE
+  PRO
+  PREMIUM
+}
+
+enum SubStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+  INCOMPLETE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum ExpenseCategory {
+  KANTOOR
+  REIZEN
+  MARKETING
+  SOFTWARE
+  HARDWARE
+  ETEN_DRINKEN
+  TELEFOON
+  OVERIG
+}
+
+enum NotificationType {
+  UREN_REMINDER
+  BTW_DEADLINE
+  FACTUUR_OVERDUE
+  BELASTING_REMINDER
+  SYSTEEM
+}
+
+// ─── AUTH (NextAuth) ─────────────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── USER ────────────────────────────────────────────────────────────────────
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String?
+  password        String?
+  emailVerified   DateTime?
+  image           String?
+
+  // ZZP profiel
+  bedrijfsnaam    String?
+  kvkNummer       String?
+  btwNummer       String?
+  iban            String?
+  adres           String?
+  postcode        String?
+  stad            String?
+  telefoon        String?
+
+  // Instellingen
+  uurtarief       Float     @default(85)
+  btwTarief       Float     @default(21)
+  belastingPct    Float     @default(30)
+  plan            Plan      @default(FREE)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  accounts        Account[]
+  sessions        Session[]
+  subscription    Subscription?
+  timeEntries     TimeEntry[]
+  invoices        Invoice[]
+  expenses        Expense[]
+  trips           Trip[]
+  clients         Client[]
+  projects        Project[]
+  notifications   Notification[]
+}
+
+// ─── SUBSCRIPTION ────────────────────────────────────────────────────────────
+
+model Subscription {
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  stripeCustomerId    String?   @unique
+  stripeSubscriptionId String?  @unique
+  plan                Plan      @default(FREE)
+  status              SubStatus @default(ACTIVE)
+  currentPeriodStart  DateTime?
+  currentPeriodEnd    DateTime?
+  cancelAtPeriodEnd   Boolean   @default(false)
+  interval            String?   // 'month' | 'year'
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── CLIENT ──────────────────────────────────────────────────────────────────
+
+model Client {
+  id          String    @id @default(cuid())
+  userId      String
+  naam        String
+  email       String?
+  telefoon    String?
+  adres       String?
+  postcode    String?
+  stad        String?
+  kvkNummer   String?
+  btwNummer   String?
+  iban        String?
+  notities    String?
+  actief      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects    Project[]
+  invoices    Invoice[]
+  timeEntries TimeEntry[]
+  expenses    Expense[]
+  trips       Trip[]
+}
+
+// ─── PROJECT ─────────────────────────────────────────────────────────────────
+
+model Project {
+  id          String        @id @default(cuid())
+  userId      String
+  clientId    String?
+  naam        String
+  omschrijving String?
+  status      ProjectStatus @default(ACTIVE)
+  budget      Float?
+  uurtarief   Float?
+  startDatum  DateTime?
+  eindDatum   DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client      Client?     @relation(fields: [clientId], references: [id])
+  timeEntries TimeEntry[]
+  expenses    Expense[]
+  trips       Trip[]
+}
+
+// ─── TIME ENTRY ──────────────────────────────────────────────────────────────
+
+model TimeEntry {
+  id           String   @id @default(cuid())
+  userId       String
+  clientId     String?
+  projectId    String?
+  invoiceId    String?
+  datum        DateTime
+  uren         Float
+  omschrijving String?
+  declarabel   Boolean  @default(true)
+  gefactureerd Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client       Client?  @relation(fields: [clientId], references: [id])
+  project      Project? @relation(fields: [projectId], references: [id])
+  invoice      Invoice? @relation(fields: [invoiceId], references: [id])
+}
+
+// ─── INVOICE ─────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id             String        @id @default(cuid())
+  userId         String
+  clientId       String
+  factuurNummer  String
+  datum          DateTime      @default(now())
+  vervalDatum    DateTime
+  status         InvoiceStatus @default(DRAFT)
+  subtotaal      Float
+  btwBedrag      Float
+  totaal         Float
+  btwTarief      Float         @default(21)
+  notities       String?
+  betaaldOp      DateTime?
+  pdfUrl         String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client         Client        @relation(fields: [clientId], references: [id])
+  regels         FactuurRegel[]
+  timeEntries    TimeEntry[]
+}
+
+model FactuurRegel {
+  id           String  @id @default(cuid())
+  invoiceId    String
+  omschrijving String
+  aantal       Float
+  tarief       Float
+  bedrag       Float
+
+  invoice      Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+// ─── EXPENSE ─────────────────────────────────────────────────────────────────
+
+model Expense {
+  id          String          @id @default(cuid())
+  userId      String
+  clientId    String?
+  projectId   String?
+  datum       DateTime
+  bedrag      Float
+  btw         Float           @default(0)
+  categorie   ExpenseCategory @default(OVERIG)
+  omschrijving String?
+  leverancier String?
+  bonUrl      String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client      Client?  @relation(fields: [clientId], references: [id])
+  project     Project? @relation(fields: [projectId], references: [id])
+}
+
+// ─── TRIP (Kilometers) ───────────────────────────────────────────────────────
+
+model Trip {
+  id          String   @id @default(cuid())
+  userId      String
+  clientId    String?
+  projectId   String?
+  datum       DateTime
+  van         String
+  naar        String
+  kilometers  Float
+  doel        String?
+  zakelijkPct Float    @default(100)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client      Client?  @relation(fields: [clientId], references: [id])
+  project     Project? @relation(fields: [projectId], references: [id])
+}
+
+// ─── NOTIFICATION ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  titel     String
+  bericht   String
+  gelezen   Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
