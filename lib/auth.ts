@@ -46,17 +46,6 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id
         token.plan = (user as any).plan
       }
-      // Refresh plan on each request
-      if (token.id) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { plan: true, name: true },
-        })
-        if (dbUser) {
-          token.plan = dbUser.plan
-          token.name = dbUser.name
-        }
-      }
       return token
     },
     async session({ session, token }) {

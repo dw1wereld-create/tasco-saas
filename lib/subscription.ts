@@ -11,6 +11,8 @@ export type Feature =
   | 'gps_tracking'
   | 'geavanceerde_inzichten'
   | 'api_toegang'
+  | 'team_beheer'
+  | 'accountant_portal'
 
 const FEATURE_GATES: Record<Feature, Plan[]> = {
   facturatie:             ['PRO', 'PREMIUM'],
@@ -23,6 +25,8 @@ const FEATURE_GATES: Record<Feature, Plan[]> = {
   gps_tracking:           ['PREMIUM'],
   geavanceerde_inzichten: ['PREMIUM'],
   api_toegang:            ['PREMIUM'],
+  team_beheer:            ['PREMIUM'],
+  accountant_portal:      ['PREMIUM'],
 }
 
 export function hasAccess(plan: Plan, feature: Feature): boolean {

@@ -42,8 +42,8 @@ const plans = [
       'Geavanceerde inzichten & rapporten',
       'Prioriteit support (< 2u reactie)',
       'API toegang',
-      'Teamleden (binnenkort)',
-      'Accountant-portal (binnenkort)',
+      'Teamleden beheer',
+      'Accountant-portal',
     ],
   },
 ]

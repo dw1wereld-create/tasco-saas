@@ -133,8 +133,8 @@ function RegisterForm() {
 
       <p className="text-xs text-center text-[#9898B0] mt-4">
         Door aan te melden ga je akkoord met onze{' '}
-        <a href="#" className="text-brand-500 hover:underline">Voorwaarden</a> en{' '}
-        <a href="#" className="text-brand-500 hover:underline">Privacybeleid</a>.
+        <Link href="/voorwaarden" className="text-brand-500 hover:underline">Voorwaarden</Link> en{' '}
+        <Link href="/privacy" className="text-brand-500 hover:underline">Privacybeleid</Link>.
       </p>
 
       <p className="text-center text-sm text-[#6B6B8A] mt-4">

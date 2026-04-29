@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── ENUMS ───────────────────────────────────────────────────────────────────
@@ -55,6 +56,12 @@ enum NotificationType {
   FACTUUR_OVERDUE
   BELASTING_REMINDER
   SYSTEEM
+}
+
+enum TeamRole {
+  VIEWER
+  EDITOR
+  ADMIN
 }
 
 // ─── AUTH (NextAuth) ─────────────────────────────────────────────────────────
@@ -124,16 +131,18 @@ model User {
   updatedAt       DateTime  @updatedAt
 
   // Relations
-  accounts        Account[]
-  sessions        Session[]
-  subscription    Subscription?
-  timeEntries     TimeEntry[]
-  invoices        Invoice[]
-  expenses        Expense[]
-  trips           Trip[]
-  clients         Client[]
-  projects        Project[]
-  notifications   Notification[]
+  accounts          Account[]
+  sessions          Session[]
+  subscription      Subscription?
+  timeEntries       TimeEntry[]
+  invoices          Invoice[]
+  expenses          Expense[]
+  trips             Trip[]
+  clients           Client[]
+  projects          Project[]
+  notifications     Notification[]
+  teamMembers       TeamMember[]
+  accountantAccess  AccountantAccess[]
 }
 
 // ─── SUBSCRIPTION ────────────────────────────────────────────────────────────
@@ -302,9 +311,45 @@ model Trip {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  gpsTracked  Boolean  @default(false)
+  startLat    Float?
+  startLng    Float?
+  endLat      Float?
+  endLng      Float?
+
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   client      Client?  @relation(fields: [clientId], references: [id])
   project     Project? @relation(fields: [projectId], references: [id])
+}
+
+// ─── TEAM ────────────────────────────────────────────────────────────────────
+
+model TeamMember {
+  id          String   @id @default(cuid())
+  ownerId     String
+  naam        String
+  email       String?
+  role        TeamRole @default(VIEWER)
+  accessToken String   @unique @default(cuid())
+  actief      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+// ─── ACCOUNTANT ACCESS ───────────────────────────────────────────────────────
+
+model AccountantAccess {
+  id         String    @id @default(cuid())
+  userId     String
+  label      String    @default("Accountant")
+  token      String    @unique @default(cuid())
+  expiresAt  DateTime?
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // ─── NOTIFICATION ────────────────────────────────────────────────────────────

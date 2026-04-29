@@ -1,16 +1,43 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession, signOut } from 'next-auth/react'
-import { Save, LogOut, User, Building, CreditCard, Bell } from 'lucide-react'
+import { Save, LogOut, User, Building, CreditCard, Bell, BookUser, Plus, Trash2, Copy, Crown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
+interface AccountantAccess {
+  id: string
+  label: string
+  token: string
+  expiresAt: string | null
+  lastUsedAt: string | null
+  createdAt: string
+}
+
 export default function InstellingenPage() {
   const { data: session } = useSession()
   const [saving, setSaving] = useState(false)
-  const [tab, setTab] = useState<'profiel' | 'bedrijf' | 'belasting' | 'abonnement'>('profiel')
+  const [tab, setTab] = useState<'profiel' | 'bedrijf' | 'belasting' | 'abonnement' | 'accountant'>('profiel')
+  const isPremium = session?.user?.plan === 'PREMIUM'
+
+  // Accountant access state
+  const [accesses, setAccesses] = useState<AccountantAccess[]>([])
+  const [newLabel, setNewLabel] = useState('')
+  const [newExpiry, setNewExpiry] = useState('')
+  const [addingAccess, setAddingAccess] = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false)
+
+  const laadAccesses = useCallback(async () => {
+    const res = await fetch('/api/accountant/access')
+    const d = await res.json()
+    setAccesses(d.accesses ?? [])
+  }, [])
+
+  useEffect(() => {
+    if (tab === 'accountant') laadAccesses()
+  }, [tab, laadAccesses])
 
   const [profiel, setProfiel] = useState({
     name: '', email: '', telefoon: '',
@@ -50,11 +77,44 @@ export default function InstellingenPage() {
     }
   }
 
+  const handleAddAccess = async () => {
+    setAddingAccess(true)
+    try {
+      const res = await fetch('/api/accountant/access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: newLabel || 'Accountant', expiresAt: newExpiry || undefined }),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error)
+      setAccesses(prev => [d.access, ...prev])
+      setNewLabel(''); setNewExpiry(''); setShowAddForm(false)
+      toast.success('Toegang aangemaakt!')
+    } catch (err: any) {
+      toast.error(err.message || 'Aanmaken mislukt')
+    } finally {
+      setAddingAccess(false)
+    }
+  }
+
+  const handleRevokeAccess = async (id: string) => {
+    if (!confirm('Toegang intrekken? De accountant kan dan niet meer inloggen.')) return
+    await fetch(`/api/accountant/access?id=${id}`, { method: 'DELETE' })
+    setAccesses(prev => prev.filter(a => a.id !== id))
+    toast.success('Toegang ingetrokken')
+  }
+
+  const copyAccessLink = (token: string) => {
+    navigator.clipboard.writeText(`${window.location.origin}/accountant/${token}`)
+    toast.success('Link gekopieerd!')
+  }
+
   const tabs = [
     { id: 'profiel', label: 'Profiel', icon: User },
     { id: 'bedrijf', label: 'Bedrijf', icon: Building },
     { id: 'belasting', label: 'Financieel', icon: CreditCard },
     { id: 'abonnement', label: 'Abonnement', icon: Bell },
+    { id: 'accountant', label: 'Accountant', icon: BookUser },
   ]
 
   return (
@@ -208,6 +268,91 @@ export default function InstellingenPage() {
               <LogOut size={16} /> Uitloggen
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Accountant */}
+      {tab === 'accountant' && (
+        <div className="space-y-4">
+          {!isPremium ? (
+            <div className="card p-8 text-center">
+              <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <BookUser size={24} className="text-purple-500" />
+              </div>
+              <h2 className="font-bold text-[#0F0F1E] mb-2">Premium functie</h2>
+              <p className="text-sm text-[#6B6B8A] mb-4">Geef je accountant veilig toegang tot jouw administratie met een unieke alleen-lezen link.</p>
+              <Link href="/upgrade" className="btn-primary inline-flex items-center gap-2 text-sm">
+                <Crown size={15} /> Upgraden naar Premium
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div className="card p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-bold text-[#0F0F1E]">Accountanttoegang</h2>
+                  <button onClick={() => setShowAddForm(true)} className="btn-primary py-2 px-3 text-xs flex items-center gap-1">
+                    <Plus size={13} /> Nieuw
+                  </button>
+                </div>
+                <p className="text-xs text-[#9898B0] mb-4">
+                  Maak een unieke link aan voor je accountant. Zij krijgen alleen-lezen toegang tot facturen, bonnen, uren en kilometers.
+                </p>
+
+                {showAddForm && (
+                  <div className="bg-[#F5F4FF] rounded-xl p-4 mb-4 space-y-3">
+                    <div>
+                      <label className="label">Label (bijv. naam accountant)</label>
+                      <input className="input" value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="Kantoor Jansen" />
+                    </div>
+                    <div>
+                      <label className="label">Vervaldatum (optioneel)</label>
+                      <input className="input" type="date" value={newExpiry} onChange={e => setNewExpiry(e.target.value)} />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => setShowAddForm(false)} className="btn-secondary flex-1 text-sm py-2">Annuleren</button>
+                      <button onClick={handleAddAccess} disabled={addingAccess} className="btn-primary flex-1 text-sm py-2 flex items-center justify-center gap-1">
+                        {addingAccess ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Aanmaken'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {accesses.length === 0 ? (
+                  <p className="text-sm text-[#9898B0] text-center py-4">Nog geen toegang aangemaakt</p>
+                ) : (
+                  <div className="space-y-2">
+                    {accesses.map(a => (
+                      <div key={a.id} className="flex items-center justify-between p-3 bg-[#F8F8FF] rounded-xl">
+                        <div>
+                          <p className="text-sm font-semibold text-[#0F0F1E]">{a.label}</p>
+                          <p className="text-xs text-[#9898B0]">
+                            {a.lastUsedAt ? `Laatst gebruikt: ${new Date(a.lastUsedAt).toLocaleDateString('nl-NL')}` : 'Nog niet gebruikt'}
+                            {a.expiresAt && ` · Verloopt: ${new Date(a.expiresAt).toLocaleDateString('nl-NL')}`}
+                          </p>
+                        </div>
+                        <div className="flex gap-1">
+                          <button onClick={() => copyAccessLink(a.token)} title="Kopieer link"
+                            className="w-8 h-8 flex items-center justify-center text-[#9898B0] hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-colors">
+                            <Copy size={14} />
+                          </button>
+                          <button onClick={() => handleRevokeAccess(a.id)} title="Intrekken"
+                            className="w-8 h-8 flex items-center justify-center text-[#9898B0] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="card p-4 bg-blue-50 border border-blue-100">
+                <p className="text-xs text-blue-700">
+                  <strong>Privacy:</strong> De accountant ziet alle financiële gegevens maar kan niets wijzigen. De link werkt zonder inloggen. Trek toegang in als de samenwerking eindigt.
+                </p>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

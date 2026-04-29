@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Sidebar from '@/components/layout/Sidebar'
 import BottomNav from '@/components/layout/BottomNav'
+import AIAssistant from '@/components/AIAssistant'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions)
@@ -17,6 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="lg:hidden">
         <BottomNav />
       </div>
+      <AIAssistant />
     </div>
   )
 }

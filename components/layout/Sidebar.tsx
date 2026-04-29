@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import {
   LayoutDashboard, Clock, FileText, Receipt,
-  Car, Calculator, Users, Settings, LogOut, Zap, Crown
+  Car, Calculator, Users, Settings, LogOut, Zap, Crown, UserCog
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -17,6 +17,7 @@ const navItems = [
   { href: '/kilometers', label: 'Kilometers', icon: Car },
   { href: '/belasting', label: 'Belasting', icon: Calculator },
   { href: '/klanten', label: 'Klanten & Projecten', icon: Users },
+  { href: '/teamleden', label: 'Teamleden', icon: UserCog },
 ]
 
 export default function Sidebar() {

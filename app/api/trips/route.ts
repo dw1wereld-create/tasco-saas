@@ -33,6 +33,11 @@ export async function POST(req: Request) {
       zakelijkPct: body.zakelijkPct ?? 100,
       clientId: body.clientId || null,
       projectId: body.projectId || null,
+      gpsTracked: body.gpsTracked ?? false,
+      startLat: body.startLat ?? null,
+      startLng: body.startLng ?? null,
+      endLat: body.endLat ?? null,
+      endLng: body.endLng ?? null,
     },
     include: { client: { select: { naam: true } } },
   })
