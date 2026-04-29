@@ -304,23 +304,32 @@ export default function UrenPage() {
             >
               <div className="flex items-center gap-3">
                 <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold",
+                  "w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0",
                   entry.declarabel ? "bg-brand-50 text-brand-600" : "bg-gray-100 text-gray-600"
                 )}>
-                  {entry.uren}u
+                  {parseFloat(entry.uren.toFixed(2))}u
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-[#0F0F1E]">
-                    {entry.omschrijving || entry.client?.naam || 'Uren'}
-                  </p>
-                  <p className="text-xs text-[#9898B0]">
-                    {formatDatum(entry.datum)}
-                    {entry.client && ` · ${entry.client.naam}`}
-                    {' · '}
-                    <span className={entry.declarabel ? 'text-emerald-600' : 'text-[#9898B0]'}>
-                      {entry.declarabel ? 'Declarabel' : 'Niet-declarabel'}
-                    </span>
-                  </p>
+                <div className="min-w-0">
+                  {(() => {
+                    const titel = entry.omschrijving || entry.project?.naam || entry.client?.naam || 'Uren'
+                    const extraContext = [
+                      entry.client?.naam !== titel ? entry.client?.naam : null,
+                      entry.project?.naam !== titel ? entry.project?.naam : null,
+                    ].filter(Boolean).join(' · ')
+                    return (
+                      <>
+                        <p className="text-sm font-semibold text-[#0F0F1E] truncate">{titel}</p>
+                        <p className="text-xs text-[#9898B0]">
+                          {formatDatum(entry.datum)}
+                          {extraContext && ` · ${extraContext}`}
+                          {' · '}
+                          <span className={entry.declarabel ? 'text-emerald-600' : 'text-[#9898B0]'}>
+                            {entry.declarabel ? 'Declarabel' : 'Niet-declarabel'}
+                          </span>
+                        </p>
+                      </>
+                    )
+                  })()}
                 </div>
               </div>
               <button

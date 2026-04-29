@@ -312,7 +312,7 @@ export default function DashboardClient({ naam, plan, justUpgraded, stats, zzpSc
                     <p className="text-xs text-[#9898B0]">{formatDatum(e.datum)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-[#0F0F1E]">{e.uren} u</p>
+                    <p className="text-sm font-bold text-[#0F0F1E]">{parseFloat(e.uren.toFixed(2))} u</p>
                     <p className={cn("text-xs", e.declarabel ? "text-emerald-600" : "text-[#9898B0]")}>
                       {e.declarabel ? 'Declarabel' : 'Niet decl.'}
                     </p>
